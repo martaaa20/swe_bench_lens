@@ -8,7 +8,7 @@ from data_structures.benchmark_type_enum import BenchmarkType
 
 
 class BenchmarkDownloader:
-    datasets_path = Path("./datasets")
+    datasets_path = Path("../datasets")
 
     @staticmethod
     def download_all_datasets() -> None:

@@ -1,7 +1,7 @@
 # load the swe bench verified -> and cache?
 import pickle
 
-# import pandas as pd
+import pandas as pd
 df = pd.read_parquet(
     "hf://datasets/princeton-nlp/SWE-bench_Verified/data/test-00000-of-00001.parquet"
 )
