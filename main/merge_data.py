@@ -1,18 +1,21 @@
 import pandas as pd
 
-from benchmark_downloder import BenchmarkDownloader
 from data_structures.benchmark_type_enum import BenchmarkType
 from data_structures.resolve_status_enum import ResolveStatusEnum
-from result_data_processor import ResultDataProcessor
+from main.benchmark_downloder import BenchmarkDownloader
+from main.result_data_processor import ResultDataProcessor
 
 
 class BenchmarkResultsMerger:
     def __init__(self, benchmark_type, agent_eval_name):
         self.benchmark_type = benchmark_type
         self.agent_eval_name = agent_eval_name
-        self.df_with_resolved_status = self.get_df_with_resolved_status()
+        self.df_with_resolved_status = self.__get_df_with_resolved_status()
 
     def get_df_with_resolved_status(self):
+        return self.df_with_resolved_status
+
+    def __get_df_with_resolved_status(self):
         dataset_downloader = BenchmarkDownloader()
         result_data_processor = ResultDataProcessor(
             self.benchmark_type, self.agent_eval_name
@@ -54,6 +57,14 @@ class BenchmarkResultsMerger:
         )
 
         return benchmark_df
+
+    @staticmethod
+    def add_features(input_df):
+        input_df = input_df.copy()
+        input_df = BenchmarkResultsMerger.__add_num_of_fail_to_pass(input_df)
+        input_df = BenchmarkResultsMerger.__add_num_of_hunks(input_df)
+
+        return input_df
 
     def get_full_stats(self) -> dict:
         """
