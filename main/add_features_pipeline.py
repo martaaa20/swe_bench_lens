@@ -7,7 +7,7 @@ import re
 import pandas as pd
 from unidiff.patch import PatchSet
 
-from fixed_patches import fixed_patches_dict
+from main.fixed_patches import fixed_patches_dict
 
 
 class AddFeaturesPipeline:
@@ -15,8 +15,11 @@ class AddFeaturesPipeline:
     def __init__(self, input_df):
         self.input_df = input_df.copy()
         self.input_df = self._add_fixed_patches(self.input_df)
+        self.output_df = None
 
-    def execute(self) -> pd.DataFrame:
+    def get_original_df_with_features(self) -> pd.DataFrame:
+        if self.output_df is not None:
+            return self.output_df
         executables = [
             self._add_num_of_fail_to_pass,
             self._add_num_of_pass_to_pass,
@@ -29,12 +32,32 @@ class AddFeaturesPipeline:
             self._add_delta_of_new_lines,
             self._add_length_of_description,
             self._add_num_of_code_mentions,
+            self._add_difficulty_binary_features,
         ]
-
+        result = self.input_df
         for add_feature_function in executables:
-            self.input_df = add_feature_function(self.input_df)
+            if "difficulty" in result.columns:
+                pass
+            else:
+                pass
+            result = add_feature_function(result)
+        self.output_df = result
 
-        return self.input_df
+        return self.output_df
+
+    def get_only_features_df(self):
+        if self.output_df is None:
+            self.execute()
+
+        column_names_feats = [
+            col for col in self.output_df.columns if col.startswith("FEAT_")
+        ]
+        only_features_df = self.output_df.set_index("instance_id")[column_names_feats]
+        return only_features_df
+
+    def get_corr_matrix(self):
+        features_df = self.get_only_features_df()
+        return features_df.corr()
 
     @staticmethod
     def _add_fixed_patches(df):
@@ -151,7 +174,7 @@ class AddFeaturesPipeline:
                 num_deletions += patched_file.removed
             return num_deletions
 
-        input_df["FEAT_num_of_additions"] = input_df.apply(get_num_of_deletions, axis=1)
+        input_df["FEAT_num_of_deletions"] = input_df.apply(get_num_of_deletions, axis=1)
         return input_df
 
     @staticmethod
@@ -176,7 +199,7 @@ class AddFeaturesPipeline:
 
             for patched_file in patch_set:
                 delta += patched_file.added
-                delta == patched_file.removed
+                delta -= patched_file.removed
             return delta
 
         input_df["FEAT_num_of_additions"] = input_df.apply(
@@ -208,6 +231,18 @@ class AddFeaturesPipeline:
             get_num_of_code_mentions, axis=1
         )
         return input_df
+
+    @staticmethod
+    def _add_difficulty_binary_features(input_df):
+        print(input_df.columns)
+        df_copy = input_df.copy()
+        result = pd.get_dummies(
+            df_copy, columns=["difficulty"], prefix="FEAT_difficulty"
+        )
+        result["difficulty"] = df_copy[
+            "difficulty"
+        ]  # because pd.get_dummies deletes the original column
+        return result
 
     # ---------- not used/implemented features -------------------------------------------------------------------------
     @staticmethod
