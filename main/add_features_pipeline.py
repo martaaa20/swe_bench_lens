@@ -18,8 +18,14 @@ class AddFeaturesPipeline:
         self.output_df = None
 
     def get_original_df_with_features(self) -> pd.DataFrame:
+
+        if self.output_df is None:
+            self.execute()
+        return self.output_df
+
+    def execute(self):
         if self.output_df is not None:
-            return self.output_df
+            return
         executables = [
             self._add_num_of_fail_to_pass,
             self._add_num_of_pass_to_pass,
@@ -43,9 +49,7 @@ class AddFeaturesPipeline:
             result = add_feature_function(result)
         self.output_df = result
 
-        return self.output_df
-
-    def get_only_features_df(self):
+    def get_df_for_correlation(self):
         if self.output_df is None:
             self.execute()
 
@@ -55,8 +59,23 @@ class AddFeaturesPipeline:
         only_features_df = self.output_df.set_index("instance_id")[column_names_feats]
         return only_features_df
 
+    def get_df_for_subgroup_analysis(self):
+        # the only difference is here one-hot encoded difficulty column is not needed
+        if self.output_df is None:
+            self.execute()
+
+        column_names_feats = [
+            col
+            for col in self.output_df.columns
+            if col.startswith("FEAT_") and not col.startswith("FEAT_difficulty")
+        ]
+
+        column_names_feats.extend(["binary_resolved"])
+        result_df = self.output_df.set_index("instance_id")[column_names_feats]
+        return result_df
+
     def get_corr_matrix(self):
-        features_df = self.get_only_features_df()
+        features_df = self.get_df_for_correlation()
         return features_df.corr()
 
     @staticmethod
@@ -269,3 +288,9 @@ class AddFeaturesPipeline:
         # TODO: implement
         #   for future, currently too much effort to extract num of lines of code of each file
         return input_df
+
+
+# TODO: add features on repository level: programming language distribution, how big the repositories are
+#  maybe adding the year of the issue creation
+#  address the data contamination
+#

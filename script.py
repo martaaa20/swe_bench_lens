@@ -1,7 +1,3 @@
-import codecs
-
-from unidiff import PatchSet
-
 from data_structures.benchmark_type_enum import BenchmarkType
 from main.add_features_pipeline import AddFeaturesPipeline
 from main.merge_data import BenchmarkResultsMerger
@@ -39,14 +35,14 @@ for i, agent_name in enumerate(agent_names):
         result_df = result_df.join(agent_df.set_index("instance_id"), on="instance_id")
 
 
-# benchmark_merger = BenchmarkResultsMerger(
-#    BenchmarkType.VERIFIED, "20250805_openhands-Qwen3-Coder-30B-A3B-Instruct"
-# )
-# df = benchmark_merger.get_df_with_resolved_status()
+benchmark_merger = BenchmarkResultsMerger(
+    BenchmarkType.VERIFIED, "20250805_openhands-Qwen3-Coder-30B-A3B-Instruct"
+)
+df = benchmark_merger.get_df_with_resolved_status()
 pipeline = AddFeaturesPipeline(input_df=result_df)
 df_with_feats = pipeline.get_original_df_with_features()
 
-df2 = pipeline.get_only_features_df()
+df2 = pipeline.get_df_for_correlation()
 
 corr_matrix = df2.corr()
 fig = PlottingManager(df_with_feats).plot("FEAT_num_of_fail_to_pass")
