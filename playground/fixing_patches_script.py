@@ -3,8 +3,8 @@ import codecs
 from unidiff import PatchSet
 
 from data_structures.benchmark_type_enum import BenchmarkType
-from main.add_features_pipeline import AddFeaturesPipeline
-from main.merge_data import BenchmarkResultsMerger
+from main.features_extraction.add_features_pipeline import AddFeaturesPipeline
+from main.input_data.merge_data import BenchmarkResultsMerger
 
 benchmark_merger = BenchmarkResultsMerger(
     BenchmarkType.VERIFIED, "20250805_openhands-Qwen3-Coder-30B-A3B-Instruct"

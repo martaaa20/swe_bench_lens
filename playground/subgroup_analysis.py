@@ -2,7 +2,7 @@ import pysubgroup as ps
 import pandas as pd
 
 # Load the example dataset
-from pysubgroup.datasets import get_titanic_data
+# from pysubgroup.datasets import get_titanic_data
 
 data = get_titanic_data()
 

@@ -2,8 +2,8 @@ import pandas as pd
 
 from data_structures.benchmark_type_enum import BenchmarkType
 from data_structures.resolve_status_enum import ResolveStatusEnum
-from main.benchmark_downloder import BenchmarkDownloader
-from main.result_data_processor import ResultDataProcessor
+from main.input_data.benchmark_downloder import BenchmarkDownloader
+from main.input_data.agent_result_data_processor import ResultDataProcessor
 
 
 class BenchmarkResultsMerger:

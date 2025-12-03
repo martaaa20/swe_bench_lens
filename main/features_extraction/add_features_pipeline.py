@@ -2,12 +2,15 @@ import ast
 import codecs
 import collections
 import itertools
+import pickle
 import re
+from pathlib import Path
 
 import pandas as pd
 from unidiff.patch import PatchSet
 
-from main.fixed_patches import fixed_patches_dict
+from main.features_extraction.fixed_patches import fixed_patches_dict
+from main.features_extraction.github_scraping import GitHubInfo
 
 
 class AddFeaturesPipeline:
@@ -64,19 +67,53 @@ class AddFeaturesPipeline:
         if self.output_df is None:
             self.execute()
 
+        # get the repository-level statistics
+        # todo: this is bad, self.output_df is not consistent!! cause added features here
+        repo_features_df = self.get_repo_features()
+        repo_features_df.columns = [
+            col if (col == "repo") else f"FEAT_{col}"
+            for col in repo_features_df.columns
+        ]
+        final_df = self.output_df.merge(repo_features_df, on="repo")
+
         column_names_feats = [
             col
-            for col in self.output_df.columns
+            for col in final_df.columns
             if col.startswith("FEAT_") and not col.startswith("FEAT_difficulty")
         ]
 
         column_names_feats.extend(["binary_resolved"])
-        result_df = self.output_df.set_index("instance_id")[column_names_feats]
+        result_df = final_df.set_index("instance_id")[column_names_feats]
         return result_df
 
     def get_corr_matrix(self):
         features_df = self.get_df_for_correlation()
         return features_df.corr()
+
+    def get_repo_features(self):
+        # todo: implement caching for repo- specific information
+        #  (a lot of requests have to be done, is much slower and can hit rate-limit)
+
+        my_file = Path(
+            "./main/features_extraction/swe_bench_verified_repo_stats.pickle"
+        )
+        if my_file.is_file():
+            with open(my_file, "rb") as f:
+                df = pickle.load(open(my_file, "rb"))
+
+            return df
+
+        repo_names = set(list(self.input_df["repo"]))
+
+        repo_values_list = []
+        for repo_name in repo_names:
+            github_info = GitHubInfo(repo_name)
+            repo_values = github_info.get_all_features_dict()
+            repo_values_list.append(repo_values.values())
+
+        column_names = list(repo_values.keys())
+        df = pd.DataFrame(data=repo_values_list, columns=column_names)
+        return df
 
     @staticmethod
     def _add_fixed_patches(df):

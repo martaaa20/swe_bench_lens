@@ -43,3 +43,10 @@ VS accuracy in the full dataset: 0.696
 
 based on this some should be deleted
 word explanation: when the subgroup is rephrased previous subgroup with new features and score is less interesting
+
+#TODO: implement if the feature covers >95% should not be considered
+
+## Other heuristics:
+- added gituhb specific features
+- added primary language
+- added other langauges -> except of the main one

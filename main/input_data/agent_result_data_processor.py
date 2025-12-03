@@ -5,7 +5,7 @@ from data_structures.benchmark_type_enum import BenchmarkType
 
 
 class ResultDataProcessor:
-    path_to_data = Path("C:\code\swe-bench\data")
+    path_to_data = Path("C:\\code\\swe-bench\\data")
 
     def __init__(self, benchmark_type: BenchmarkType, agent_eval_name: str):
         self.benchmark_type = benchmark_type
