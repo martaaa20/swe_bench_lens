@@ -95,7 +95,7 @@ class AddFeaturesPipeline:
         #  (a lot of requests have to be done, is much slower and can hit rate-limit)
 
         my_file = Path(
-            "./main/features_extraction/swe_bench_verified_repo_stats.pickle"
+            "C:/code/swe-bench/main/features_extraction/swe_bench_verified_repo_stats.pickle"
         )
         if my_file.is_file():
             with open(my_file, "rb") as f:
