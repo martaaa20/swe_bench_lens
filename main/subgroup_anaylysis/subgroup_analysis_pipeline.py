@@ -1,16 +1,24 @@
-import pandas as pd
+from enum import Enum
+import ast
+
 import pysubgroup as ps
+from pydantic import BaseModel
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from data_structures.benchmark_type_enum import BenchmarkType
 from main.features_extraction.add_features_pipeline import AddFeaturesPipeline
 from main.input_data.merge_data import BenchmarkResultsMerger
-import ast
-from sklearn.preprocessing import MultiLabelBinarizer
-from pydantic import BaseModel
 
-import numpy as np
 
 np.seterr(divide="ignore", invalid="ignore")
+
+
+class CategoryOfFeature(Enum):
+    REPOSITORY = "repository"
+    ISSUE_DESCRIPTION = "issue_description"
+    GROUND_TRUTH = "ground_truth"
 
 
 class Subgroup(BaseModel):
@@ -58,7 +66,6 @@ class SubgroupAnalysisPipeline:
 
         pipeline = AddFeaturesPipeline(input_df=result_df)
         self.df_with_features = self.__get_features_df(pipeline)
-        self.df_with_features["binary_resolved"].sum() / self.df_with_features.shape[0]
         self.__general_accuracy = (
             self.df_with_features["binary_resolved"].sum()
             / self.df_with_features.shape[0]
@@ -177,7 +184,7 @@ class SubgroupAnalysisPipeline:
 
             sg_elem = Subgroup(
                 selector_str=str(subgroup[1]),
-                selectors=subgroup[1].selectors,  # todo: fix here,
+                selectors=subgroup[1].selectors,
                 num_instances=subgroup[2].size_sg,
                 subgroup_accuracy=sg_accuracy,
                 subgroup_interestingness=subgroup[0],
@@ -191,8 +198,58 @@ class SubgroupAnalysisPipeline:
     def print_results(self, subgroup_discovery_result):
         subgroup_discovery_result.pretty_print()
 
+    def get_list_of_features(self):
+        if self.df_with_features is None:
+            self.perform()
+        all_cols = list(self.df_with_features).columns
+        feature_cols = all_cols.copy()
+        feature_cols.remove("binary_resolved")
+        feature_cols.remove("instance_id")
+        return feature_cols
+
+    def get_dict_of_features_and_categories(self):
+        feature_to_category = {
+            "FEAT_created_n_months_ago": CategoryOfFeature.REPOSITORY,
+            "FEAT_files_hierarchy_delta": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_latest_commit_in_repo_n_days_ago": CategoryOfFeature.REPOSITORY,
+            "FEAT_length_of_description": CategoryOfFeature.ISSUE_DESCRIPTION,
+            "FEAT_num_of_fail_to_pass": CategoryOfFeature.GROUND_TRUTH,  # todo: what about these features?
+            "FEAT_num_of_pass_to_pass": CategoryOfFeature.GROUND_TRUTH,  # todo: what about these features?
+            "FEAT_num_of_hunks": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_num_of_files_changed": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_patch_spread": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_num_of_deletions": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_num_of_additions": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_num_of_code_mentions": CategoryOfFeature.ISSUE_DESCRIPTION,
+            "FEAT_num_of_contributors_repo": CategoryOfFeature.REPOSITORY,
+            "FEAT_primary_language_repo": CategoryOfFeature.REPOSITORY,
+            "FEAT_number_of_files_in_repo": CategoryOfFeature.REPOSITORY,
+            "FEAT_created_n_months_ago": CategoryOfFeature.REPOSITORY,
+            "FEAT_repo_size_in_kb": CategoryOfFeature.REPOSITORY,
+            "FEAT_num_of_stars_repo": CategoryOfFeature.REPOSITORY,
+        }
+        # note: the other programming languages are one-hot encoded, that's why there is unlimited number of columns -> not in this dict
+
+        result_feature_to_category = {}
+        for feat_column in self.get_list_of_features():
+            # check if the column has an assigned category
+            assert (
+                feat_column not in feature_to_category.keys()
+                and not feat_column.startswith("FEAT_other_languages_repo_")
+            ), "The feature is not known, please assign the category in this function"
+
+            if feat_column.startswith("FEAT_other_languages_repo_"):
+                result_feature_to_category[feat_column] = CategoryOfFeature.REPOSITORY
+            else:
+                result_feature_to_category[feat_column] = feature_to_category[feat_column]
+
+        return result_feature_to_category
+
     @staticmethod
     def __modify_searchspace(searchspace):
+        """
+        deletes some unneccessary selectors
+        """
         searchspace = [
             s
             for s in searchspace
@@ -208,9 +265,8 @@ class SubgroupAnalysisPipeline:
     @staticmethod
     def __get_features_df(pipeline):
         df = pipeline.get_df_for_subgroup_analysis()
-        df_repo = pipeline.get_repo_features()
 
-        # prepare the df for subgroup analysis, convert secondary_languages list to hot-one encodings --------------------------
+        # prepare the df for subgroup analysis, convert secondary_languages list to hot-one encodings ------------------
         df["FEAT_other_languages_repo"] = df["FEAT_other_languages_repo"].apply(
             lambda x: ast.literal_eval(x) if isinstance(x, str) else x
         )
