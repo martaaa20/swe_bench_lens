@@ -16,9 +16,9 @@ np.seterr(divide="ignore", invalid="ignore")
 
 
 class CategoryOfFeature(Enum):
-    REPOSITORY = "repository"
-    ISSUE_DESCRIPTION = "issue_description"
-    GROUND_TRUTH = "ground_truth"
+    REPOSITORY = "Repository-specific features"
+    ISSUE_DESCRIPTION = "Issue-description features"
+    GROUND_TRUTH = "Issues' ground truth features"
 
 
 class Subgroup(BaseModel):
@@ -201,10 +201,9 @@ class SubgroupAnalysisPipeline:
     def get_list_of_features(self):
         if self.df_with_features is None:
             self.perform()
-        all_cols = list(self.df_with_features).columns
+        all_cols = list(self.df_with_features.columns)
         feature_cols = all_cols.copy()
         feature_cols.remove("binary_resolved")
-        feature_cols.remove("instance_id")
         return feature_cols
 
     def get_dict_of_features_and_categories(self):
@@ -224,7 +223,6 @@ class SubgroupAnalysisPipeline:
             "FEAT_num_of_contributors_repo": CategoryOfFeature.REPOSITORY,
             "FEAT_primary_language_repo": CategoryOfFeature.REPOSITORY,
             "FEAT_number_of_files_in_repo": CategoryOfFeature.REPOSITORY,
-            "FEAT_created_n_months_ago": CategoryOfFeature.REPOSITORY,
             "FEAT_repo_size_in_kb": CategoryOfFeature.REPOSITORY,
             "FEAT_num_of_stars_repo": CategoryOfFeature.REPOSITORY,
         }
@@ -233,15 +231,19 @@ class SubgroupAnalysisPipeline:
         result_feature_to_category = {}
         for feat_column in self.get_list_of_features():
             # check if the column has an assigned category
-            assert (
-                feat_column not in feature_to_category.keys()
-                and not feat_column.startswith("FEAT_other_languages_repo_")
-            ), "The feature is not known, please assign the category in this function"
+            assert feat_column in feature_to_category.keys() or feat_column.startswith(
+                "FEAT_other_languages_repo_"
+            ), (
+                "The feature is not known, please assign the category in this function",
+                feat_column,
+            )
 
             if feat_column.startswith("FEAT_other_languages_repo_"):
                 result_feature_to_category[feat_column] = CategoryOfFeature.REPOSITORY
             else:
-                result_feature_to_category[feat_column] = feature_to_category[feat_column]
+                result_feature_to_category[feat_column] = feature_to_category[
+                    feat_column
+                ]
 
         return result_feature_to_category
 
