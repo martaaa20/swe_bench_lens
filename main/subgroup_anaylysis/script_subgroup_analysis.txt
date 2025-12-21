@@ -58,7 +58,11 @@ todo: delete the fail_to_pass, pass_to_pass feature
 todo: additions, deletions -> number of modified lines (specifci for swe -benchmarks)
 
 ## Step 5:
-reranking the subgroups based on the delta of the delta (general_acc - subgroup_acc)
+reranking the subgroups based on
+LEVEL1: number of conditions (starts from 1, ascending order)
+LEVEL2: number of the delta of the accuracy (general_acc - subgroup_acc) (descendinf order)
+
+Subgroups are easier to interpret when the number of conditions is smaller.
 
 #TODO: implement if the selector covers >95% should not be considered
 

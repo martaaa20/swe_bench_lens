@@ -30,15 +30,16 @@ class AddFeaturesPipeline:
         if self.output_df is not None:
             return
         executables = [
-            self._add_num_of_fail_to_pass,
-            self._add_num_of_pass_to_pass,
+            # self._add_num_of_fail_to_pass,
+            # self._add_num_of_pass_to_pass,
             self._add_num_of_hunks,
             self._add_num_of_files_changed,
             self._add_files_hierarchy_delta,
             self._add_patch_spread,
-            self._add_num_of_deletions,
-            self._add_num_of_additions,
-            self._add_delta_of_new_lines,
+            self._add_num_of_modified_lines,
+            # self._add_num_of_deletions,  # todo: ask Jatin once again why it needs to be deleted specifically for SWE benchmarks
+            # self._add_num_of_additions,
+            # self._add_delta_of_new_lines,
             self._add_length_of_description,
             self._add_num_of_code_mentions,
             self._add_difficulty_binary_features,
@@ -220,7 +221,31 @@ class AddFeaturesPipeline:
         return input_df
 
     @staticmethod
+    def _add_num_of_modified_lines(input_df):
+        """
+        This is specific to the SWE benchmarks.
+        """
+
+        def get_num_of_modified_lines(row):
+            num_modified = 0
+            patch_set = PatchSet.from_string(row["patch_fixed"])
+
+            for patched_file in patch_set:
+                num_modified += patched_file.added
+                num_modified += patched_file.removed
+            return num_modified
+
+        input_df["FEAT_num_of_modified_lines"] = input_df.apply(
+            get_num_of_modified_lines, axis=1
+        )
+        return input_df
+
+    @staticmethod
     def _add_num_of_deletions(input_df):
+        """
+        This is not used for SWE benchmarks. Instead, modified lines are used
+        """
+
         def get_num_of_deletions(row):
             num_deletions = 0
             patch_set = PatchSet.from_string(row["patch_fixed"])
@@ -234,6 +259,10 @@ class AddFeaturesPipeline:
 
     @staticmethod
     def _add_num_of_additions(input_df):
+        """
+        This is not used for SWE benchmarks. Instead, modified lines are used
+        """
+
         def get_num_of_additions(row):
             num_additions = 0
             patch_set = PatchSet.from_string(row["patch_fixed"])

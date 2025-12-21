@@ -38,7 +38,7 @@ class SubgroupAnalysisResultModel(BaseModel):
         for idx, subgroup_instance in enumerate(self.subgroups):
             print(f"\n\n######## SUBGROUP {idx + 1}")
             print(subgroup_instance.selector_str)
-            print("score: " + str(subgroup_instance.subgroup_accuracy))
+            print("score: " + str(subgroup_instance.subgroup_interestingness))
             print(
                 f"number of instances of the subgroup: {subgroup_instance.num_instances}"
             )
@@ -104,14 +104,13 @@ class SubgroupAnalysisPipeline:
         interesting_subgroups = []
         deleted_subgroups = []
         deleted_subgroups_ids = []
-        passed_subgroups = (
+        first_check_for_redundancy = (
             {}
-        )  # dict of tuples as keys (subgroup_size, positives_in_subgroup) and redundant count
+        )  # dict of tuples as keys (subgroup_size, positives_in_subgroup) and tuple of (all_intstances, postiive_instances) as values
 
         for index, subgroup in enumerate(result.results):
             size_subgroup = subgroup[2].size_sg
             target_fulfilled_count = subgroup[2].positives_count
-            all_instances = subgroup[1].n_instances
 
             accuracy_subgroup = (
                 target_fulfilled_count / size_subgroup
@@ -133,12 +132,47 @@ class SubgroupAnalysisPipeline:
                     general_accuracy,
                 )
             ):
+
+                all_instance_ids, positive_instance_ids = (
+                    self.get_instance_ids_of_subgroup(subgroup)
+                )
+
+                instances_tuple_for_redundancy = (
+                    all_instance_ids,
+                    positive_instance_ids,
+                )
+
+                # todo: finish up here removing the duplicates
+
                 subgroup_tuple = (size_subgroup, target_fulfilled_count)
-                if subgroup_tuple in passed_subgroups:
-                    passed_subgroups[subgroup_tuple] += 1
-                else:
-                    passed_subgroups[subgroup_tuple] = 1
+                redundant = False
+                if (
+                    subgroup_tuple in first_check_for_redundancy
+                ):  # removing the subgroups that have the same exact instances in the subgroup (aka removing duplicates)
+                    for similar_subgroup in first_check_for_redundancy[subgroup_tuple]:
+                        if set(similar_subgroup[0]) == set(
+                            instances_tuple_for_redundancy[0]
+                        ):
+                            if set(similar_subgroup[1]) == set(
+                                instances_tuple_for_redundancy[1]
+                            ):
+                                redundant = True
+
+                if not redundant:
                     interesting_subgroups.append(subgroup)
+
+                    # step: adding the subgroup as a new subgroup for next groups' redundancy checks
+                    if subgroup_tuple not in first_check_for_redundancy:
+                        first_check_for_redundancy[subgroup_tuple] = []
+
+                    first_check_for_redundancy[subgroup_tuple].append(
+                        instances_tuple_for_redundancy
+                    )
+
+                else:
+                    deleted_subgroups.append(subgroup)
+                    deleted_subgroups_ids.append(index)
+
             else:
                 deleted_subgroups.append(subgroup)
                 deleted_subgroups_ids.append(index)
@@ -217,6 +251,7 @@ class SubgroupAnalysisPipeline:
             "FEAT_num_of_hunks": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_num_of_files_changed": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_patch_spread": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_num_of_modified_lines": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_num_of_deletions": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_num_of_additions": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_num_of_code_mentions": CategoryOfFeature.ISSUE_DESCRIPTION,
@@ -234,7 +269,7 @@ class SubgroupAnalysisPipeline:
             assert feat_column in feature_to_category.keys() or feat_column.startswith(
                 "FEAT_other_languages_repo_"
             ), (
-                "The feature is not known, please assign the category in this function",
+                "The feature is unknown, please assign the category in this function",
                 feat_column,
             )
 
@@ -336,6 +371,14 @@ class SubgroupAnalysisPipeline:
             else:
                 results.append(False)
         return all(results)
+
+    def get_instance_ids_of_subgroup(self, subgroup):
+        mask = subgroup[1].covers(self.df_with_features)
+        all_instance_ids = self.df_with_features.index[mask].to_list()
+
+        positive_mask = mask & (self.df_with_features["binary_resolved"] == True)
+        positive_instance_ids = self.df_with_features.index[positive_mask].to_list()
+        return all_instance_ids, positive_instance_ids
 
 
 # agent_name = "20250805_openhands-Qwen3-Coder-30B-A3B-Instruct"
