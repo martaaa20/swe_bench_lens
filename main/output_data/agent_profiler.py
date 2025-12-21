@@ -16,7 +16,7 @@ from main.subgroup_anaylysis.subgroup_analysis_pipeline import (
 class CategoryAnalysis(BaseModel):
     category_name: CategoryOfFeature
     total_occurrences: int
-    normalized_score: float  # todo: ??
+    normalized_score: float
 
 
 class AgentProfiler:

@@ -212,8 +212,8 @@ class SubgroupAnalysisPipeline:
             "FEAT_files_hierarchy_delta": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_latest_commit_in_repo_n_days_ago": CategoryOfFeature.REPOSITORY,
             "FEAT_length_of_description": CategoryOfFeature.ISSUE_DESCRIPTION,
-            "FEAT_num_of_fail_to_pass": CategoryOfFeature.GROUND_TRUTH,  # todo: what about these features?
-            "FEAT_num_of_pass_to_pass": CategoryOfFeature.GROUND_TRUTH,  # todo: what about these features?
+            "FEAT_num_of_fail_to_pass": CategoryOfFeature.GROUND_TRUTH,
+            "FEAT_num_of_pass_to_pass": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_num_of_hunks": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_num_of_files_changed": CategoryOfFeature.GROUND_TRUTH,
             "FEAT_patch_spread": CategoryOfFeature.GROUND_TRUTH,

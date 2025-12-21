@@ -202,7 +202,6 @@ class AddFeaturesPipeline:
 
     @staticmethod
     def _add_patch_spread(input_df):
-        # TODO: check if this makes sense
         def get_patch_spread(row):
             patch_set = PatchSet.from_string(row["patch_fixed"])
             patch_spread = 0
@@ -319,15 +318,3 @@ class AddFeaturesPipeline:
         counter = collections.Counter(extensions)
 
         return input_df
-
-    @staticmethod
-    def _add_relative_patch_spread(input_df):
-        # TODO: implement
-        #   for future, currently too much effort to extract num of lines of code of each file
-        return input_df
-
-
-# TODO: add features on repository level: programming language distribution, how big the repositories are
-#  maybe adding the year of the issue creation
-#  address the data contamination
-#

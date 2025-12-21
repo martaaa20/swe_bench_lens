@@ -15,7 +15,7 @@ class PatternValidator:
         :param data_to_validate_with: this parameter takes in consistent data from either mutiple agents / benchmarks. it has to follow the same structure though
         :return: true if pattern valid across most / all other datapoints, otherwise false.
         """
-        # todo: implement this function
+        # todo (maybe need this, maybe not): implement this function
 
         # step: implement the pattern validation considering multiple agents
 

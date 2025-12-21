@@ -108,7 +108,6 @@ class GitHubInfo:
         return main_language, secondary_languages
 
     def get_number_of_files(self):
-        # todo: not sure if it's correct, check additionally
         url = f"{self.api_url}/git/trees/HEAD"
         data = self.__get_response_from_api(url, recursive=1)
         return sum(1 for e in data["tree"] if e["type"] == "blob")
