@@ -77,8 +77,8 @@ class AgentProfiler:
             for sg in performance_drop_subgroups.subgroups
         ]
 
-        top_increases = sorted(increased_deltas, key=lambda x: x[1], reverse=True)[:3]
-        top_drops = sorted(dropped_deltas, key=lambda x: x[1])[:3]
+        top_increases = sorted(increased_deltas, key=lambda x: x[1], reverse=True)[:20]
+        top_drops = sorted(dropped_deltas, key=lambda x: x[1])[:20]
 
         rows = []
 
@@ -88,6 +88,7 @@ class AgentProfiler:
                     "Type": "Increase",
                     "Delta": float(delta),
                     "Acc": sg.subgroup_accuracy,
+                    "Num of instances": sg.num_instances,
                     "Selector": sg.selector_str,
                 }
             )
@@ -98,6 +99,7 @@ class AgentProfiler:
                     "Type": "Drop",
                     "Delta": float(delta),
                     "Acc": sg.subgroup_accuracy,
+                    "Num of instances": sg.num_instances,
                     "Selector": sg.selector_str,
                 }
             )
@@ -122,7 +124,7 @@ class AgentProfiler:
             performance_increased_subgroups.subgroups
             + performance_drop_subgroups.subgroups
         )
-        sorted_sg = sorted(all_sg, key=lambda x: x.num_instances, reverse=True)[:5]
+        sorted_sg = sorted(all_sg, key=lambda x: x.num_instances, reverse=True)[:20]
 
         rows = []
         for sg in sorted_sg:
@@ -167,7 +169,7 @@ class AgentProfiler:
             score = sg.num_instances * abs(delta)
             scored_sgs.append((sg, delta, score))
 
-        top_interestingness = sorted(scored_sgs, key=lambda x: x[2], reverse=True)[:5]
+        top_interestingness = sorted(scored_sgs, key=lambda x: x[2], reverse=True)[:20]
 
         rows = []
         for sg, delta, score in top_interestingness:

@@ -5,6 +5,7 @@ import pysubgroup as ps
 from pydantic import BaseModel
 import numpy as np
 import pandas as pd
+from pysubgroup import plot_distribution_numeric
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from data_structures.benchmark_type_enum import BenchmarkType
@@ -45,6 +46,21 @@ class SubgroupAnalysisResultModel(BaseModel):
             print(f"accuracy in the SUBGROUP: {subgroup_instance.subgroup_accuracy}")
             print(f"VS accuracy in the full dataset: {self.overall_accuracy}")
 
+    def get_data(self) -> list[tuple]:
+
+        subgroups_info = []
+        for sg in self.subgroups:
+            delta_acc = sg.subgroup_accuracy - self.overall_accuracy
+            sg_tuple = (
+                sg.selector_str,
+                sg.num_instances,
+                sg.subgroup_accuracy,
+                delta_acc,
+            )
+            subgroups_info.append(sg_tuple)
+
+        return subgroups_info
+
 
 class SubgroupAnalysisPipeline:
     def __init__(self, agent_name, benchmark_type, find_agents_strength=True):
@@ -65,7 +81,9 @@ class SubgroupAnalysisPipeline:
         result_df.drop(columns=["resolve_status"], inplace=True)
 
         pipeline = AddFeaturesPipeline(input_df=result_df)
-        self.df_with_features = self.__get_features_df(pipeline)
+        self.df_with_features = pipeline.get_df_for_subgroup_analysis()
+        # commented this out because not using the other important languages feature
+        # self.df_with_features = self.__get_features_df(pipeline)
         self.__general_accuracy = (
             self.df_with_features["binary_resolved"].sum()
             / self.df_with_features.shape[0]
@@ -74,7 +92,9 @@ class SubgroupAnalysisPipeline:
         # step: perform the subgroup discovery
         target = ps.BinaryTarget("binary_resolved", self.find_agents_strength)
         searchspace = ps.create_selectors(
-            self.df_with_features, ignore=["binary_resolved"]
+            self.df_with_features,
+            nbins=4,
+            ignore=["binary_resolved"],
         )
         searchspace = self.__modify_searchspace(searchspace)
         task = ps.SubgroupDiscoveryTask(
@@ -232,6 +252,9 @@ class SubgroupAnalysisPipeline:
     def print_results(self, subgroup_discovery_result):
         subgroup_discovery_result.pretty_print()
 
+    def get_data(self, subgroup_discovery_result):
+        return subgroup_discovery_result.get_data()
+
     def get_list_of_features(self):
         if self.df_with_features is None:
             self.perform()
@@ -260,6 +283,7 @@ class SubgroupAnalysisPipeline:
             "FEAT_number_of_files_in_repo": CategoryOfFeature.REPOSITORY,
             "FEAT_repo_size_in_kb": CategoryOfFeature.REPOSITORY,
             "FEAT_num_of_stars_repo": CategoryOfFeature.REPOSITORY,
+            "FEAT_repository_name": CategoryOfFeature.REPOSITORY,
         }
         # note: the other programming languages are one-hot encoded, that's why there is unlimited number of columns -> not in this dict
 
@@ -285,7 +309,7 @@ class SubgroupAnalysisPipeline:
     @staticmethod
     def __modify_searchspace(searchspace):
         """
-        deletes some unneccessary selectors
+        deletes some unnecessary selectors
         """
         searchspace = [
             s
@@ -382,14 +406,17 @@ class SubgroupAnalysisPipeline:
 
 
 # agent_name = "20250805_openhands-Qwen3-Coder-30B-A3B-Instruct"
-agent_name = "20250805_openhands-Qwen3-Coder-480B-A35B-Instruct"
-benchmark_merger = BenchmarkResultsMerger(BenchmarkType.VERIFIED, agent_name)
+# agent_name = "20250805_openhands-Qwen3-Coder-480B-A35B-Instruct"
+agent_name1 = "20251120_livesweagent_gemini-3-pro-preview"
+agent_name2 = "20251103_sonar-foundation-agent_claude-sonnet-4-5"
+benchmark_merger = BenchmarkResultsMerger(BenchmarkType.VERIFIED, agent_name2)
 
 if __name__ == "__main__":
-    sg_disc1 = SubgroupAnalysisPipeline(agent_name, BenchmarkType.VERIFIED, True)
+    sg_disc1 = SubgroupAnalysisPipeline(agent_name1, BenchmarkType.VERIFIED, True)
     subgroups1 = sg_disc1.perform()
     sg_disc1.print_results(subgroups1)
 
-    sg_disc2 = SubgroupAnalysisPipeline(agent_name, BenchmarkType.VERIFIED, False)
+    sg_disc2 = SubgroupAnalysisPipeline(agent_name1, BenchmarkType.VERIFIED, False)
     subgroups2 = sg_disc2.perform()
     sg_disc2.print_results(subgroups2)
+    pass

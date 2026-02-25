@@ -42,6 +42,7 @@ class AddFeaturesPipeline:
             # self._add_delta_of_new_lines,
             self._add_length_of_description,
             self._add_num_of_code_mentions,
+            self._add_repository_name_feature,
             self._add_difficulty_binary_features,
         ]
         result = self.input_df
@@ -75,7 +76,8 @@ class AddFeaturesPipeline:
             col if (col == "repo") else f"FEAT_{col}"
             for col in repo_features_df.columns
         ]
-        final_df = self.output_df.merge(repo_features_df, on="repo")
+        # final_df = self.output_df.merge(repo_features_df, on="repo")
+        final_df = self.output_df
 
         column_names_feats = [
             col
@@ -318,7 +320,6 @@ class AddFeaturesPipeline:
 
     @staticmethod
     def _add_difficulty_binary_features(input_df):
-        print(input_df.columns)
         df_copy = input_df.copy()
         result = pd.get_dummies(
             df_copy, columns=["difficulty"], prefix="FEAT_difficulty"
@@ -327,6 +328,11 @@ class AddFeaturesPipeline:
             "difficulty"
         ]  # because pd.get_dummies deletes the original column
         return result
+
+    @staticmethod
+    def _add_repository_name_feature(input_df):
+        input_df["FEAT_repository_name"] = input_df["repo"]
+        return input_df
 
     # ---------- not used/implemented features -------------------------------------------------------------------------
     @staticmethod
