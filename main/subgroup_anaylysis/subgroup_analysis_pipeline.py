@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 import ast
 
@@ -126,7 +127,7 @@ class SubgroupAnalysisPipeline:
         deleted_subgroups_ids = []
         first_check_for_redundancy = (
             {}
-        )  # dict of tuples as keys (subgroup_size, positives_in_subgroup) and tuple of (all_intstances, postiive_instances) as values
+        )  # dict of tuples as keys (subgroup_size, positives_in_subgroup) and tuple of (all_instances, positive_instances) as values
 
         for index, subgroup in enumerate(result.results):
             size_subgroup = subgroup[2].size_sg
@@ -142,8 +143,12 @@ class SubgroupAnalysisPipeline:
                 / subgroup[1].n_instances
             )
 
+            min_required_count = math.floor(
+                len(self.df_with_features) * 0.04
+            )  # min num_instances required is 4% of the dataset
+
             if (
-                target_fulfilled_count >= 20
+                target_fulfilled_count >= min_required_count
                 and abs(accuracy_subgroup - general_accuracy) >= 0.1
                 and self.is_interesting_superset(
                     subgroup[1].selectors,
