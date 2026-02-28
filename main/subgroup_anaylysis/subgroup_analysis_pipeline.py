@@ -10,66 +10,39 @@ from pysubgroup import plot_distribution_numeric
 from sklearn.preprocessing import MultiLabelBinarizer
 
 from data_structures.benchmark_type_enum import BenchmarkType
+from data_structures.subgroup_analysis_model import (
+    SubgroupAnalysisResultModel,
+    Subgroup,
+    CategoryOfFeature,
+)
 from main.features_extraction.add_features_pipeline import AddFeaturesPipeline
 from main.input_data.merge_data import BenchmarkResultsMerger
 
 
-np.seterr(divide="ignore", invalid="ignore")
-
-
-class CategoryOfFeature(Enum):
-    REPOSITORY = "Repository-specific features"
-    ISSUE_DESCRIPTION = "Issue-description features"
-    GROUND_TRUTH = "Issues' ground truth features"
-
-
-class Subgroup(BaseModel):
-    selector_str: str
-    selectors: tuple
-    num_instances: int
-    subgroup_accuracy: float
-    subgroup_interestingness: float
-
-
-class SubgroupAnalysisResultModel(BaseModel):
-    subgroups: list[Subgroup]
-    overall_accuracy: float
-    overall_instances_count: int
-
-    def pretty_print(self):
-        for idx, subgroup_instance in enumerate(self.subgroups):
-            print(f"\n\n######## SUBGROUP {idx + 1}")
-            print(subgroup_instance.selector_str)
-            print("score: " + str(subgroup_instance.subgroup_interestingness))
-            print(
-                f"number of instances of the subgroup: {subgroup_instance.num_instances}"
-            )
-            print(f"accuracy in the SUBGROUP: {subgroup_instance.subgroup_accuracy}")
-            print(f"VS accuracy in the full dataset: {self.overall_accuracy}")
-
-    def get_data(self) -> list[tuple]:
-
-        subgroups_info = []
-        for sg in self.subgroups:
-            delta_acc = sg.subgroup_accuracy - self.overall_accuracy
-            sg_tuple = (
-                sg.selector_str,
-                sg.num_instances,
-                sg.subgroup_accuracy,
-                delta_acc,
-            )
-            subgroups_info.append(sg_tuple)
-
-        return subgroups_info
+# np.seterr(divide="ignore", invalid="ignore")
 
 
 class SubgroupAnalysisPipeline:
-    def __init__(self, agent_name, benchmark_type, find_agents_strength=True):
+    def __init__(
+        self,
+        agent_name: str,
+        benchmark_type: BenchmarkType,
+        find_agents_strength: bool = True,
+        min_subgroup_instances_ratio: float = 0.04,
+    ):
+        """
+
+        :param agent_name: agent name (agent key string)
+        :param benchmark_type: type of benchmark (BenchmarkType type)
+        :param find_agents_strength: boolean to perform subgroup analysis based on agent strength or weaknesses
+        :param min_subgroup_instances_ratio: percentage threshold (float) specifying the minimum proportion of instances required for a subgroup to be considered valid
+        """
         self.agent_name = agent_name
         self.benchmark_type = benchmark_type
         self.find_agents_strength = find_agents_strength
         self.__general_accuracy = None
         self.df_with_features = None
+        self.min_subgroup_instances_ratio = min_subgroup_instances_ratio
 
     def perform(self, depth=3, result_set_size=1000):
         # step: prepare data for the subgroup discovery
@@ -83,8 +56,10 @@ class SubgroupAnalysisPipeline:
 
         pipeline = AddFeaturesPipeline(input_df=result_df)
         self.df_with_features = pipeline.get_df_for_subgroup_analysis()
-        # commented this out because not using the other important languages feature
+
+        # right now not using the other_programming_languages feature, commented out next liene
         # self.df_with_features = self.__get_features_df(pipeline)
+
         self.__general_accuracy = (
             self.df_with_features["binary_resolved"].sum()
             / self.df_with_features.shape[0]
@@ -144,13 +119,16 @@ class SubgroupAnalysisPipeline:
             )
 
             min_required_count = math.floor(
-                len(self.df_with_features) * 0.04
-            )  # min num_instances required is 4% of the dataset
+                len(self.df_with_features) * self.min_subgroup_instances_ratio
+            )  # min num_instances required is min_subgroup_instances_ratio (default=4%) of the dataset
 
+            # step: filter out the subgroups if one of the following applies: 1) too little instances in the subgroup;
+            #  2) delta of accuracy between the general and the subgroup one is too small; 3) is a less interesting subset
+            #  (described detailed in my paper in: Methodology -> Heuristic elimination -> Sttep 4)
             if (
                 target_fulfilled_count >= min_required_count
                 and abs(accuracy_subgroup - general_accuracy) >= 0.1
-                and self.is_interesting_superset(
+                and self.__is_interesting_superset(
                     subgroup[1].selectors,
                     accuracy_subgroup,
                     interesting_subgroups,
@@ -159,7 +137,7 @@ class SubgroupAnalysisPipeline:
             ):
 
                 all_instance_ids, positive_instance_ids = (
-                    self.get_instance_ids_of_subgroup(subgroup)
+                    self.__helper_get_instance_ids_of_subgroup(subgroup)
                 )
 
                 instances_tuple_for_redundancy = (
@@ -167,7 +145,8 @@ class SubgroupAnalysisPipeline:
                     positive_instance_ids,
                 )
 
-                # todo: finish up here removing the duplicates
+                # step: Eliminate duplicate subgroups with identical coverage and identical positive instance sets.
+                #   Keep only the first occurrence.
 
                 subgroup_tuple = (size_subgroup, target_fulfilled_count)
                 redundant = False
@@ -290,7 +269,8 @@ class SubgroupAnalysisPipeline:
             "FEAT_num_of_stars_repo": CategoryOfFeature.REPOSITORY,
             "FEAT_repository_name": CategoryOfFeature.REPOSITORY,
         }
-        # note: the other programming languages are one-hot encoded, that's why there is unlimited number of columns -> not in this dict
+        # note: the other_programming_languages feature is one-hot encoded -> could potentially many columns,
+        #  we cannot manually add here right now -> not in this dict
 
         result_feature_to_category = {}
         for feat_column in self.get_list_of_features():
@@ -315,16 +295,6 @@ class SubgroupAnalysisPipeline:
         """
         deletes some unnecessary selectors
         """
-        searchspace = [
-            s
-            for s in searchspace
-            if not (
-                hasattr(s, "attribute_name")
-                and s.attribute_name.startswith("FEAT_other_languages_repo")
-                and str(s).endswith("==0")
-            )
-        ]
-
         # step: delete the selectors that cover 95% of the instances
         filtered_searchspace = []
         for sel in searchspace:
@@ -332,6 +302,16 @@ class SubgroupAnalysisPipeline:
             coverage = mask.mean()
             if coverage <= 0.95:
                 filtered_searchspace.append(sel)
+
+        filtered_searchspace = [
+            s
+            for s in filtered_searchspace
+            if not (
+                hasattr(s, "attribute_name")
+                and s.attribute_name.startswith("FEAT_other_languages_repo")
+                and str(s).endswith("==0")
+            )
+        ]
 
         return filtered_searchspace
 
@@ -361,7 +341,7 @@ class SubgroupAnalysisPipeline:
         return df
 
     @staticmethod
-    def find_subsets(
+    def __find_subsets(
         subgroup_features,
         all_interesting_subgroups,
     ):
@@ -375,7 +355,7 @@ class SubgroupAnalysisPipeline:
 
         return subset_subgroups
 
-    def is_interesting_superset(
+    def __is_interesting_superset(
         self,
         subgroup_features,
         subgroup_score,
@@ -384,7 +364,7 @@ class SubgroupAnalysisPipeline:
     ):
         results = []
         new_score = subgroup_score
-        to_compare_with = SubgroupAnalysisPipeline.find_subsets(
+        to_compare_with = SubgroupAnalysisPipeline.__find_subsets(
             subgroup_features, all_interesting_subgroups
         )
         for interesting_subgroup in to_compare_with:
@@ -408,7 +388,7 @@ class SubgroupAnalysisPipeline:
                 results.append(False)
         return all(results)
 
-    def get_instance_ids_of_subgroup(self, subgroup):
+    def __helper_get_instance_ids_of_subgroup(self, subgroup):
         mask = subgroup[1].covers(self.df_with_features)
         all_instance_ids = self.df_with_features.index[mask].to_list()
 
