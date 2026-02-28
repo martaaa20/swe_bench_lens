@@ -311,8 +311,7 @@ class SubgroupAnalysisPipeline:
 
         return result_feature_to_category
 
-    @staticmethod
-    def __modify_searchspace(searchspace):
+    def __modify_searchspace(self, searchspace):
         """
         deletes some unnecessary selectors
         """
@@ -325,8 +324,16 @@ class SubgroupAnalysisPipeline:
                 and str(s).endswith("==0")
             )
         ]
-        # todo: delete from searchspace features that cover >95% of all instances
-        return searchspace
+
+        # step: delete the selectors that cover 95% of the instances
+        filtered_searchspace = []
+        for sel in searchspace:
+            mask = sel.covers(self.df_with_features)
+            coverage = mask.mean()
+            if coverage <= 0.95:
+                filtered_searchspace.append(sel)
+
+        return filtered_searchspace
 
     @staticmethod
     def __get_features_df(pipeline):
