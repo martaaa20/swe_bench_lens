@@ -55,6 +55,6 @@ There are the following points how one can execute the framework:
    - exploration is encouraged
    - `main/results/histograms_for_quantiles.py`
 
-
+## Define the GitHub token
 Create an .env file in the project’s root directory. Put the GitHub token there as follows:
 GITHUB_TOKEN=your_github_api_token
