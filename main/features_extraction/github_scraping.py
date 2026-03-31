@@ -16,37 +16,6 @@ class GitHubInfo:
         self.api_url = f"https://api.github.com/repos/{self.repo_name}"
         self.main_page_soup = self.__get_main_page_soup()
 
-    def map_numerical_features_to_nominal(self):
-        """
-        Repository size -> number of files, number of contributors
-        Popularity -> stars
-        Maturity -> created_n_months-ago (<12 months - young, 1-4 years - mature, > 4 years - legacy)
-        Activity -> commit_recency (<30 days active, 30-180 inactive, >180 dormant)
-        Contributor size (1 - solo, 2-10 small team, >10 large community)
-        language_diversity (single_language, multi_language)
-
-
-        Repository-level numerical metrics were transformed into nominal categories following common practices in mining software repositories research,
-         improving interpretability and reducing the complexity of the subgroup search space.
-        """
-
-        """POPULARITY - STARS
-         Then, the threshold for a popular project is chosen as 100, i.e., if a project has more than 100 stars, it can be regarded as a popular project
-         https://xin-xia.github.io/publication/compsac19.pdf
-        """
-
-        """Research Finding: Approximately 71.6% of GitHub repositories are "solo" projects (1 contributor). Collaboration metrics often filter for teams > 2 to be considered "collaborative.
-        https://livablesoftware.com/collaboration-patterns-of-the-active-developers-in-github/
-        """
-
-        """
-        Research Finding: A standard threshold for "Unmaintained" or "Dormant" projects is 365 days (1 year) without a commit.
-
-        Identifying Unmaintained Projects in GitHub - https://arxiv.org/pdf/1809.04041
-        """
-
-        raise NotImplementedError()
-
     def get_all_features_dict(self):
         primary_language, other_languages = self.get_most_used_languages()
         result = {

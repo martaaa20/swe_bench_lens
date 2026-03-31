@@ -271,7 +271,9 @@ class AgentProfiler:
 
         df = pd.DataFrame(rows)
         if printable:
-            print("--- 5. Feature Category Analysis (Normalized) ---")
+            print(
+                "--- 5. Feature Category Analysis (Normalized) -----------------------------------------------------"
+            )
             print(df.to_string(index=False))
             print("\n")
 
@@ -319,7 +321,9 @@ class AgentProfiler:
             results[cat.value] = df
 
         if printable:
-            print("--- 6. Feature Ranking by Category ---")
+            print(
+                "--- 6. Feature Ranking by Category ----------------------------------------------------------------"
+            )
 
             for category_name, result_df in results.items():
                 print(f"--------- {category_name} --------- ")

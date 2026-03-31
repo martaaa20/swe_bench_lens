@@ -29,6 +29,8 @@ class AddFeaturesPipeline:
     def execute(self):
         if self.output_df is not None:
             return
+
+        # features commented out were not used in the final version, but are good for exploratory data analysis
         executables = [
             # self._add_num_of_fail_to_pass,
             # self._add_num_of_pass_to_pass,
@@ -37,7 +39,7 @@ class AddFeaturesPipeline:
             self._add_files_hierarchy_delta,
             self._add_patch_spread,
             self._add_num_of_modified_lines,
-            # self._add_num_of_deletions,  # todo: ask Jatin once again why it needs to be deleted specifically for SWE benchmarks
+            # self._add_num_of_deletions,
             # self._add_num_of_additions,
             # self._add_delta_of_new_lines,
             self._add_length_of_description,
@@ -70,12 +72,14 @@ class AddFeaturesPipeline:
             self.execute()
 
         # get the repository-level statistics
-        # todo: this is bad, self.output_df is not consistent!! cause added features here
         repo_features_df = self.get_repo_features()
         repo_features_df.columns = [
             col if (col == "repo") else f"FEAT_{col}"
             for col in repo_features_df.columns
         ]
+
+        # the following line adds the repository features
+        #  commented out, because those weren't used in the final version
         # final_df = self.output_df.merge(repo_features_df, on="repo")
         final_df = self.output_df
 
@@ -94,8 +98,6 @@ class AddFeaturesPipeline:
         return features_df.corr()
 
     def get_repo_features(self):
-        # todo: implement caching for repo- specific information
-        #  (a lot of requests have to be done, is much slower and can hit rate-limit)
 
         my_file = Path(
             "C:/code/swe-bench/main/features_extraction/swe_bench_verified_repo_stats.pickle"
@@ -332,24 +334,4 @@ class AddFeaturesPipeline:
     @staticmethod
     def _add_repository_name_feature(input_df):
         input_df["FEAT_repository_name"] = input_df["repo"]
-        return input_df
-
-    # ---------- not used/implemented features -------------------------------------------------------------------------
-    @staticmethod
-    def _add_programming_language_percentages(input_df):
-        """
-        DO NOT USE THIS
-        - does not make sense for SWE-bench verified
-        - implementation not finished
-
-        This function does not make sense: Extensions from all issues {'cfg': 1, 'py': 622}
-        (for SWE-Bench verified)
-        """
-        extensions = []
-        for index, row in input_df.iterrows():
-            patch_set = PatchSet.from_string(row["patch_fixed"])
-            extensions.extend([elem.path.split(".")[-1] for elem in patch_set])
-
-        counter = collections.Counter(extensions)
-
         return input_df
