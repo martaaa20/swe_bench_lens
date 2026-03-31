@@ -1,15 +1,11 @@
 import pandas as pd
 import pysubgroup as ps
-from matplotlib import pyplot as plt
 
 from data_structures.benchmark_type_enum import BenchmarkType
 from main.features_extraction.add_features_pipeline import AddFeaturesPipeline
 from main.input_data.merge_data import BenchmarkResultsMerger
 
 import plotly.express as px
-
-# todo: finish this up
-# think in general about do I need to make repository-specific analysis? - interesting discussion?
 
 
 class HistogramsForQuantiles:
@@ -71,20 +67,12 @@ class HistogramsForQuantiles:
             for i, selector in enumerate(selectors):
                 data = {}
 
-                df_one_repo = self.df_with_features[
-                    self.df_with_features["FEAT_repository_name"] == "django/django"
-                ].copy()
                 df = self.df_with_features.copy()
 
                 description = ps.subgroup_description.Conjunction([selector])
-                cover = description.covers(df_one_repo)
+                cover = description.covers(df)
 
-                # Select the subgroup rows
-                # df = self.df_with_features[
-                #     self.df_with_features["FEAT_repository_name"] == "django/django"
-                # ].copy()
-                subgroup = df_one_repo.loc[cover, "binary_resolved"]
-                # subgroup = df_one_repo.loc[cover, "binary_resolved"]
+                subgroup = df.loc[cover, "binary_resolved"]
 
                 # Compute accuracy: proportion of positives
                 accuracy = subgroup.mean()
@@ -106,8 +94,6 @@ class HistogramsForQuantiles:
             print(df)
             self.create_plot(df, feature_chosen)
 
-        # otherwise ask how many quantiles if not chosen
-
     def get_nominal_or_numerical(self, test_selectors_for_feature) -> str:
         if isinstance(test_selectors_for_feature[0], ps.EqualitySelector):
             return "nominal"
@@ -127,8 +113,7 @@ class HistogramsForQuantiles:
             y="accuracy",
             text="accuracy_rounded",
             color_discrete_sequence=["steelblue"],
-            labels={"accuracy": "Accuracy", "description": "description_length"},
-            # labels={"accuracy": "Accuracy", "description": feature_name},
+            labels={"accuracy": "Accuracy", "description": feature_name},
             height=500,
         )
 
@@ -137,8 +122,7 @@ class HistogramsForQuantiles:
         )
 
         fig.update_layout(
-            title="",
-            # title=f"{feature_name} - Subgroup Accuracy Histogram",
+            title=f"{feature_name} - Subgroup Accuracy Histogram",
             yaxis=dict(range=[0, 1]),
             uniformtext_minsize=12,
             uniformtext_mode="hide",
