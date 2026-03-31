@@ -8,7 +8,7 @@ from data_structures.benchmark_type_enum import BenchmarkType
 from main.features_extraction.add_features_pipeline import AddFeaturesPipeline
 from main.input_data.benchmark_downloder import BenchmarkDownloader
 from main.input_data.merge_data import BenchmarkResultsMerger
-from main.subgroup_anaylysis.subgroup_analysis_pipeline import SubgroupAnalysisPipeline
+from main.subgroup_analysis.subgroup_analysis_pipeline import SubgroupAnalysisPipeline
 
 
 class ExplorataryAgentSubgroupComparator:

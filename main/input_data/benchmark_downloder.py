@@ -8,9 +8,7 @@ from data_structures.benchmark_type_enum import BenchmarkType
 
 
 class BenchmarkDownloader:
-    PROJECT_ROOT = (
-        Path(__file__).resolve().parent.parent.parent
-    )
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     datasets_path = PROJECT_ROOT / "datasets"
     if not datasets_path.exists():
         datasets_path.mkdir(parents=True, exist_ok=True)

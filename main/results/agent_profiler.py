@@ -5,7 +5,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from data_structures.benchmark_type_enum import BenchmarkType
-from main.subgroup_anaylysis.subgroup_analysis_pipeline import (
+from main.subgroup_analysis.subgroup_analysis_pipeline import (
     Subgroup,
     SubgroupAnalysisResultModel,
     SubgroupAnalysisPipeline,

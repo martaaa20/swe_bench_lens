@@ -2,7 +2,7 @@ from data_structures.benchmark_type_enum import BenchmarkType
 from main.results.paper_writing_helpers.rewrite_to_latex import (
     rewrite_interval_expression2,
 )
-from main.subgroup_anaylysis.subgroup_analysis_pipeline import SubgroupAnalysisPipeline
+from main.subgroup_analysis.subgroup_analysis_pipeline import SubgroupAnalysisPipeline
 
 if __name__ == "__main__":
     result = ""
