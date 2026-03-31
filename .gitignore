@@ -1,4 +1,4 @@
 .idea/
 /openai.txt
-data/
-datasets/
+__pycache__/
+.env

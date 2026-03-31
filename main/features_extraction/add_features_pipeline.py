@@ -2,12 +2,15 @@ import ast
 import codecs
 import collections
 import itertools
+import pickle
 import re
+from pathlib import Path
 
 import pandas as pd
 from unidiff.patch import PatchSet
 
-from main.fixed_patches import fixed_patches_dict
+from main.features_extraction.fixed_patches import fixed_patches_dict
+from main.features_extraction.github_scraping import GitHubInfo
 
 
 class AddFeaturesPipeline:
@@ -18,20 +21,30 @@ class AddFeaturesPipeline:
         self.output_df = None
 
     def get_original_df_with_features(self) -> pd.DataFrame:
+
+        if self.output_df is None:
+            self.execute()
+        return self.output_df
+
+    def execute(self):
         if self.output_df is not None:
-            return self.output_df
+            return
+
+        # features commented out were not used in the final version, but are good for exploratory data analysis
         executables = [
-            self._add_num_of_fail_to_pass,
-            self._add_num_of_pass_to_pass,
+            # self._add_num_of_fail_to_pass,
+            # self._add_num_of_pass_to_pass,
             self._add_num_of_hunks,
             self._add_num_of_files_changed,
             self._add_files_hierarchy_delta,
             self._add_patch_spread,
-            self._add_num_of_deletions,
-            self._add_num_of_additions,
-            self._add_delta_of_new_lines,
+            self._add_num_of_modified_lines,
+            # self._add_num_of_deletions,
+            # self._add_num_of_additions,
+            # self._add_delta_of_new_lines,
             self._add_length_of_description,
             self._add_num_of_code_mentions,
+            self._add_repository_name_feature,
             self._add_difficulty_binary_features,
         ]
         result = self.input_df
@@ -43,9 +56,7 @@ class AddFeaturesPipeline:
             result = add_feature_function(result)
         self.output_df = result
 
-        return self.output_df
-
-    def get_only_features_df(self):
+    def get_df_for_correlation(self):
         if self.output_df is None:
             self.execute()
 
@@ -55,9 +66,59 @@ class AddFeaturesPipeline:
         only_features_df = self.output_df.set_index("instance_id")[column_names_feats]
         return only_features_df
 
+    def get_df_for_subgroup_analysis(self):
+        # the only difference is here one-hot encoded difficulty column is not needed
+        if self.output_df is None:
+            self.execute()
+
+        # get the repository-level statistics
+        repo_features_df = self.get_repo_features()
+        repo_features_df.columns = [
+            col if (col == "repo") else f"FEAT_{col}"
+            for col in repo_features_df.columns
+        ]
+
+        # the following line adds the repository features
+        #  commented out, because those weren't used in the final version
+        # final_df = self.output_df.merge(repo_features_df, on="repo")
+        final_df = self.output_df
+
+        column_names_feats = [
+            col
+            for col in final_df.columns
+            if col.startswith("FEAT_") and not col.startswith("FEAT_difficulty")
+        ]
+
+        column_names_feats.extend(["binary_resolved"])
+        result_df = final_df.set_index("instance_id")[column_names_feats]
+        return result_df
+
     def get_corr_matrix(self):
-        features_df = self.get_only_features_df()
+        features_df = self.get_df_for_correlation()
         return features_df.corr()
+
+    def get_repo_features(self):
+
+        my_file = Path(
+            "C:/code/swe-bench/main/features_extraction/swe_bench_verified_repo_stats.pickle"
+        )
+        if my_file.is_file():
+            with open(my_file, "rb") as f:
+                df = pickle.load(open(my_file, "rb"))
+
+            return df
+
+        repo_names = set(list(self.input_df["repo"]))
+
+        repo_values_list = []
+        for repo_name in repo_names:
+            github_info = GitHubInfo(repo_name)
+            repo_values = github_info.get_all_features_dict()
+            repo_values_list.append(repo_values.values())
+
+        column_names = list(repo_values.keys())
+        df = pd.DataFrame(data=repo_values_list, columns=column_names)
+        return df
 
     @staticmethod
     def _add_fixed_patches(df):
@@ -146,7 +207,6 @@ class AddFeaturesPipeline:
 
     @staticmethod
     def _add_patch_spread(input_df):
-        # TODO: check if this makes sense
         def get_patch_spread(row):
             patch_set = PatchSet.from_string(row["patch_fixed"])
             patch_spread = 0
@@ -165,7 +225,31 @@ class AddFeaturesPipeline:
         return input_df
 
     @staticmethod
+    def _add_num_of_modified_lines(input_df):
+        """
+        This is specific to the SWE benchmarks.
+        """
+
+        def get_num_of_modified_lines(row):
+            num_modified = 0
+            patch_set = PatchSet.from_string(row["patch_fixed"])
+
+            for patched_file in patch_set:
+                num_modified += patched_file.added
+                num_modified += patched_file.removed
+            return num_modified
+
+        input_df["FEAT_num_of_modified_lines"] = input_df.apply(
+            get_num_of_modified_lines, axis=1
+        )
+        return input_df
+
+    @staticmethod
     def _add_num_of_deletions(input_df):
+        """
+        This is not used for SWE benchmarks. Instead, modified lines are used
+        """
+
         def get_num_of_deletions(row):
             num_deletions = 0
             patch_set = PatchSet.from_string(row["patch_fixed"])
@@ -179,6 +263,10 @@ class AddFeaturesPipeline:
 
     @staticmethod
     def _add_num_of_additions(input_df):
+        """
+        This is not used for SWE benchmarks. Instead, modified lines are used
+        """
+
         def get_num_of_additions(row):
             num_additions = 0
             patch_set = PatchSet.from_string(row["patch_fixed"])
@@ -234,7 +322,6 @@ class AddFeaturesPipeline:
 
     @staticmethod
     def _add_difficulty_binary_features(input_df):
-        print(input_df.columns)
         df_copy = input_df.copy()
         result = pd.get_dummies(
             df_copy, columns=["difficulty"], prefix="FEAT_difficulty"
@@ -244,28 +331,7 @@ class AddFeaturesPipeline:
         ]  # because pd.get_dummies deletes the original column
         return result
 
-    # ---------- not used/implemented features -------------------------------------------------------------------------
     @staticmethod
-    def _add_programming_language_percentages(input_df):
-        """
-        DO NOT USE THIS
-        - does not make sense for SWE-bench verified
-        - implementation not finished
-
-        This function does not make sense: Extensions from all issues {'cfg': 1, 'py': 622}
-        (for SWE-Bench verified)
-        """
-        extensions = []
-        for index, row in input_df.iterrows():
-            patch_set = PatchSet.from_string(row["patch_fixed"])
-            extensions.extend([elem.path.split(".")[-1] for elem in patch_set])
-
-        counter = collections.Counter(extensions)
-
-        return input_df
-
-    @staticmethod
-    def _add_relative_patch_spread(input_df):
-        # TODO: implement
-        #   for future, currently too much effort to extract num of lines of code of each file
+    def _add_repository_name_feature(input_df):
+        input_df["FEAT_repository_name"] = input_df["repo"]
         return input_df

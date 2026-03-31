@@ -8,7 +8,10 @@ from data_structures.benchmark_type_enum import BenchmarkType
 
 
 class BenchmarkDownloader:
-    datasets_path = Path("C:/code/swe-bench/datasets")
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+    datasets_path = PROJECT_ROOT / "datasets"
+    if not datasets_path.exists():
+        datasets_path.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def download_all_datasets() -> None:
@@ -39,7 +42,8 @@ class BenchmarkDownloader:
             )
         else:
             raise ValueError(
-                f"Invalid benchmark type: {benchmark}; no implementation for downloading this dataset"
+                f"Invalid benchmark type: {benchmark}; no implementation for downloading this dataset. Add code to download "
+                f"in the benchmark_downloader.py file."
             )
         df.to_pickle(BenchmarkDownloader.datasets_path / f"{benchmark.value}.pickle")
 
@@ -54,3 +58,7 @@ class BenchmarkDownloader:
             self.__download_dataset(benchmark)
 
         return pd.read_pickle(self.datasets_path / f"{benchmark.value}.pickle")
+
+
+if __name__ == "__main__":
+    BenchmarkDownloader.download_all_datasets()
